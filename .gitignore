@@ -1,0 +1,26 @@
+# Git ignore large model files
+# Model weights and checkpoints
+models/models/**/*.ckpt
+models/models/**/*.pt
+
+# All data files (too large for GitHub)
+data/**/*
+!data/.gitkeep
+
+# Cache and temporary files
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+
+# Results files (optional - keep if you want)
+results/*.txt
+
+# Large data files
+*.zip
+*.npz
+*.csv
+
+# Allow specific txt files
+!requirements.txt
+!README.md
