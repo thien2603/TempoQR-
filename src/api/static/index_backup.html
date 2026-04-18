@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TempoQR - Temporal Knowledge Graph Question Answering</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .prediction-card {
+            transition: all 0.3s ease;
+        }
+        .prediction-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <!-- Header -->
+    <header class="glass-effect shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-brain text-white text-2xl"></i>
+                    <h1 class="text-white text-2xl font-bold">TempoQR</h1>
+                </div>
+                <div class="text-white text-sm">
+                    <i class="fas fa-network-wired mr-2"></i>
+                    Temporal Knowledge Graph QA
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- Question Input Section -->
+            <div class="glass-effect rounded-xl p-8 mb-8">
+                <h2 class="text-white text-xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-question-circle mr-3"></i>
+                    Đặt câu hỏi về Temporal Knowledge Graph
+                </h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="question" class="block text-white text-sm font-medium mb-2">
+                            Câu hỏi của bạn:
+                        </label>
+                        <textarea 
+                            id="question" 
+                            rows="4" 
+                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/90"
+                            placeholder="Ví dụ: Who was the president of the United States in 2020?"
+                        ></textarea>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <div class="flex-1">
+                            <label for="top_k" class="block text-white text-sm font-medium mb-2">
+                                Số lượng kết quả:
+                            </label>
+                            <select 
+                                id="top_k" 
+                                class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/90"
+                            >
+                                <option value="3">3 kết quả</option>
+                                <option value="5" selected>5 kết quả</option>
+                                <option value="10">10 kết quả</option>
+                            </select>
+                        </div>
+                        
+                        <button 
+                            id="submitBtn" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 flex items-center space-x-2 mt-6"
+                        >
+                            <i class="fas fa-search"></i>
+                            <span>Tìm kiếm</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="glass-effect rounded-xl p-8 mb-8 hidden">
+                <div class="flex items-center justify-center space-x-4">
+                    <div class="loading-spinner"></div>
+                    <span class="text-white text-lg">Đang xử lý câu hỏi...</span>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="hidden">
+                <div class="glass-effect rounded-xl p-8">
+                    <h3 class="text-white text-xl font-semibold mb-6 flex items-center">
+                        <i class="fas fa-lightbulb mr-3"></i>
+                        Kết quả tìm kiếm
+                    </h3>
+                    
+                    <div id="resultsContainer" class="space-y-4">
+                        <!-- Results will be inserted here -->
+                    </div>
+                    
+                    <div class="mt-6 pt-6 border-t border-white/20">
+                        <div class="flex items-center justify-between text-white text-sm">
+                            <div>
+                                <i class="fas fa-clock mr-2"></i>
+                                Thời gian xử lý: <span id="processingTime">0.00</span> giây
+                            </div>
+                            <div>
+                                <i class="fas fa-calendar mr-2"></i>
+                                <span id="timestamp"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Section -->
+            <div id="errorSection" class="glass-effect rounded-xl p-8 mb-8 hidden">
+                <div class="flex items-center space-x-4 text-red-200">
+                    <i class="fas fa-exclamation-triangle text-2xl"></i>
+                    <div>
+                        <h4 class="text-lg font-semibold">Đã xảy ra lỗi</h4>
+                        <p id="errorMessage" class="text-sm mt-1"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model Info Section -->
+            <div class="glass-effect rounded-xl p-8">
+                <h3 class="text-white text-xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-info-circle mr-3"></i>
+                    Thông tin mô hình
+                </h3>
+                
+                <div id="modelInfo" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Model info will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-effect mt-12">
+        <div class="container mx-auto px-6 py-4">
+            <div class="text-center text-white text-sm">
+                <p>&copy; 2024 TempoQR API - Temporal Knowledge Graph Question Answering</p>
+                <p class="mt-2">
+                    <i class="fas fa-code mr-2"></i>
+                    Powered by FastAPI & PyTorch
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api/v1';
+        
+        // DOM elements
+        const questionInput = document.getElementById('question');
+        const topKSelect = document.getElementById('top_k');
+        const submitBtn = document.getElementById('submitBtn');
+        const loadingState = document.getElementById('loadingState');
+        const resultsSection = document.getElementById('resultsSection');
+        const errorSection = document.getElementById('errorSection');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const processingTimeSpan = document.getElementById('processingTime');
+        const timestampSpan = document.getElementById('timestamp');
+        const errorMessageP = document.getElementById('errorMessage');
+        const modelInfoDiv = document.getElementById('modelInfo');
+
+        // Load model info on page load
+        window.addEventListener('load', loadModelInfo);
+
+        // Submit button click handler
+        submitBtn.addEventListener('click', submitQuestion);
+        
+        // Enter key handler for textarea
+        questionInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                submitQuestion();
+            }
+        });
+
+        async function submitQuestion() {
+            const question = questionInput.value.trim();
+            const topK = parseInt(topKSelect.value);
+            
+            if (!question) {
+                showError('Vui lòng nhập câu hỏi của bạn.');
+                return;
+            }
+
+            showLoading();
+            hideResults();
+            hideError();
+
+            try {
+                const startTime = Date.now();
+                
+                const response = await fetch(`${API_BASE_URL}/predict/single`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        top_k: topK
+                    })
+                });
+
+                const endTime = Date.now();
+                const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Request failed');
+                }
+
+                const data = await response.json();
+                console.log('API Response:', data);  // Debug logging
+                showResults(data, processingTime);
+                
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function loadModelInfo() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/predict/model/info`);
+                if (!response.ok) throw new Error('Failed to load model info');
+                
+                const data = await response.json();
+                displayModelInfo(data);
+            } catch (error) {
+                console.error('Failed to load model info:', error);
+                displayDefaultModelInfo();
+            }
+        }
+
+        function showResults(data, processingTime) {
+            console.log('showResults called with:', data, processingTime);  // Debug logging
+            resultsContainer.innerHTML = '';
+            
+            if (data.predictions && data.predictions.length > 0) {
+                console.log('Predictions found:', data.predictions);  // Debug logging
+                data.predictions.forEach((prediction, index) => {
+                    const confidence = (prediction.confidence * 100).toFixed(1);
+                    const card = createPredictionCard(index + 1, prediction.answer, confidence);
+                    resultsContainer.appendChild(card);
+                });
+            } else {
+                resultsContainer.innerHTML = `
+                    <div class="text-center text-white py-8">
+                        <i class="fas fa-search text-4xl mb-4 opacity-50"></i>
+                        <p>Không tìm thấy kết quả cho câu hỏi này.</p>
+                    </div>
+                `;
+            }
+
+            processingTimeSpan.textContent = processingTime;
+            timestampSpan.textContent = new Date().toLocaleString('vi-VN');
+            resultsSection.classList.remove('hidden');
+        }
+
+        function createPredictionCard(rank, answer, confidence) {
+            const card = document.createElement('div');
+            card.className = 'prediction-card bg-white/90 rounded-lg p-6 shadow-lg';
+            card.innerHTML = `
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
+                        ${rank}
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-gray-800 mb-2">${escapeHtml(answer)}</h4>
+                        <div class="flex items-center space-x-4 text-sm text-gray-600">
+                            <div class="flex items-center">
+                                <i class="fas fa-chart-line mr-1"></i>
+                                Độ tin cậy: ${confidence}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        function displayModelInfo(data) {
+            modelInfoDiv.innerHTML = `
+                <div class="bg-white/90 rounded-lg p-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">
+                        <i class="fas fa-cube mr-2"></i>
+                        Tên mô hình
+                    </h4>
+                    <p class="text-gray-600">${data.model_name || 'TempoQR'}</p>
+                </div>
+                <div class="bg-white/90 rounded-lg p-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">
+                        <i class="fas fa-database mr-2"></i>
+                        Dataset
+                    </h4>
+                    <p class="text-gray-600">${data.dataset_name || 'Wikidata'}</p>
+                </div>
+                <div class="bg-white/90 rounded-lg p-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">
+                        <i class="fas fa-project-diagram mr-2"></i>
+                        Thực thể
+                    </h4>
+                    <p class="text-gray-600">${data.num_entities?.toLocaleString() || 'N/A'}</p>
+                </div>
+                <div class="bg-white/90 rounded-lg p-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">
+                        <i class="fas fa-link mr-2"></i>
+                        Quan hệ
+                    </h4>
+                    <p class="text-gray-600">${data.num_relations?.toLocaleString() || 'N/A'}</p>
+                </div>
+                <div class="bg-white/90 rounded-lg p-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">
+                        <i class="fas fa-clock mr-2"></i>
+                        Timestamps
+                    </h4>
+                    <p class="text-gray-600">${data.num_timestamps?.toLocaleString() || 'N/A'}</p>
+                </div>
+                <div class="bg-white/90 rounded-lg p-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">
+                        <i class="fas fa-microchip mr-2"></i>
+                        Device
+                    </h4>
+                    <p class="text-gray-600">${data.device || 'CPU'}</p>
+                </div>
+            `;
+        }
+
+        function displayDefaultModelInfo() {
+            modelInfoDiv.innerHTML = `
+                <div class="bg-white/90 rounded-lg p-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">
+                        <i class="fas fa-cube mr-2"></i>
+                        Tên mô hình
+                    </h4>
+                    <p class="text-gray-600">TempoQR</p>
+                </div>
+                <div class="bg-white/90 rounded-lg p-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">
+                        <i class="fas fa-database mr-2"></i>
+                        Dataset
+                    </h4>
+                    <p class="text-gray-600">Wikidata</p>
+                </div>
+                <div class="bg-white/90 rounded-lg p-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">
+                        <i class="fas fa-microchip mr-2"></i>
+                        Device
+                    </h4>
+                    <p class="text-gray-600">CPU</p>
+                </div>
+            `;
+        }
+
+        function showLoading() {
+            loadingState.classList.remove('hidden');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang xử lý...';
+        }
+
+        function hideLoading() {
+            loadingState.classList.add('hidden');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-search mr-2"></i>Tìm kiếm';
+        }
+
+        function showResults() {
+            resultsSection.classList.remove('hidden');
+        }
+
+        function hideResults() {
+            resultsSection.classList.add('hidden');
+        }
+
+        function showError(message) {
+            errorMessageP.textContent = message;
+            errorSection.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorSection.classList.add('hidden');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

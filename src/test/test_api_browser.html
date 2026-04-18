@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TempoQR API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .loading {
+            text-align: center;
+            color: #007bff;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        .success {
+            background-color: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        .confidence {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+        .examples {
+            margin-top: 30px;
+        }
+        .example-btn {
+            background-color: #6c757d;
+            font-size: 12px;
+            padding: 8px 12px;
+            margin: 5px;
+            display: inline-block;
+        }
+        .example-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 TempoQR API Test</h1>
+        
+        <form id="qaForm">
+            <div class="form-group">
+                <label for="question">Nhập câu hỏi của bạn:</label>
+                <input type="text" id="question" placeholder="Ví dụ: Who is the CEO of Apple?" required>
+            </div>
+            
+            <button type="submit" id="submitBtn">
+                🤔 Hỏi TempoQR
+            </button>
+        </form>
+        
+        <div id="response" style="display: none;">
+            <h3>💬 Trả lời:</h3>
+            <div id="answer"></div>
+            <div id="confidence" class="confidence"></div>
+        </div>
+        
+        <div class="examples">
+            <h3>🎯 Ví dụ câu hỏi:</h3>
+            <button class="example-btn" onclick="setQuestion('Who is the CEO of Apple?')">
+                Who is the CEO of Apple?
+            </button>
+            <button class="example-btn" onclick="setQuestion('Who was president of USA in 2020?')">
+                Who was president of USA in 2020?
+            </button>
+            <button class="example-btn" onclick="setQuestion('What company did Steve Jobs found?')">
+                What company did Steve Jobs find?
+            </button>
+            <button class="example-btn" onclick="setQuestion('When did World War 2 end?')">
+                When did World War 2 end?
+            </button>
+            <button class="example-btn" onclick="setQuestion('What is the capital of France?')">
+                What is the capital of France?
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000/ask';
+        
+        function setQuestion(question) {
+            document.getElementById('question').value = question;
+        }
+        
+        function showResponse(answer, confidence, isError = false) {
+            const responseDiv = document.getElementById('response');
+            const answerDiv = document.getElementById('answer');
+            const confidenceDiv = document.getElementById('confidence');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            responseDiv.style.display = 'block';
+            answerDiv.textContent = answer;
+            confidenceDiv.textContent = `Confidence: ${(confidence * 100).toFixed(1)}%`;
+            
+            if (isError) {
+                responseDiv.className = 'response error';
+            } else {
+                responseDiv.className = 'response success';
+            }
+            
+            submitBtn.disabled = false;
+            submitBtn.textContent = '🤔 Hỏi TempoQR';
+        }
+        
+        function showLoading() {
+            const responseDiv = document.getElementById('response');
+            const answerDiv = document.getElementById('answer');
+            const confidenceDiv = document.getElementById('confidence');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'response loading';
+            answerDiv.innerHTML = '⏳ Đang xử lý câu hỏi...';
+            confidenceDiv.textContent = '';
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Đang suy luận...';
+        }
+        
+        document.getElementById('qaForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const question = document.getElementById('question').value.trim();
+            if (!question) {
+                alert('Vui lòng nhập câu hỏi!');
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                const startTime = Date.now();
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ question })
+                });
+                
+                const endTime = Date.now();
+                const responseTime = ((endTime - startTime) / 1000).toFixed(2);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showResponse(data.answer, data.confidence, false);
+                    console.log(`Response time: ${responseTime}s`);
+                } else {
+                    const errorText = await response.text();
+                    showResponse(`Lỗi: ${response.status} - ${errorText}`, 0, true);
+                }
+                
+            } catch (error) {
+                showResponse(`Lỗi kết nối: ${error.message}`, 0, true);
+            }
+        });
+        
+        // Check API health on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('http://localhost:8000/');
+                if (response.ok) {
+                    console.log('✅ API is running');
+                } else {
+                    console.log('❌ API is not responding');
+                }
+            } catch (error) {
+                console.log('❌ Cannot connect to API:', error.message);
+            }
+        });
+    </script>
+</body>
+</html>
