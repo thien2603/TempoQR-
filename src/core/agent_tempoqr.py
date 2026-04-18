@@ -20,7 +20,7 @@ class TempoQRAgent:
         api_key = groq_api_key or os.environ.get("GROQ_API_KEY")
         if not api_key:
             # Hardcode cho test (không commit)
-            api_key = ""
+            api_key = "..."
         self.client = Groq(api_key=api_key)
         
         # Load KG dictionaries

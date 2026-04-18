@@ -21,7 +21,7 @@ wd_id_to_text = all_dicts['wd_id_to_text']
 # 2. Kh i t o Groq client
 # ------------------------------
 # Set API key directly
-GROQ_API_KEY = ""
+GROQ_API_KEY = "..."
 client = Groq(api_key=GROQ_API_KEY)
 
 # ------------------------------
