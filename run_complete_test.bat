@@ -1,3 +1,0 @@
-@echo off
-echo Activating tempo_env and running complete test...
-cmd /c "conda activate tempo_env && python test_model_complete.py"
